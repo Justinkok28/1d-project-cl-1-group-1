@@ -12,11 +12,6 @@ module x_bit_left_shifter #(
   // instantiate mux_2 (32 of them)
     mux_2 mux_2_32[32]
     sig shifted_bits[32]
-    
-  
-  // module declarations
-  // instantiate mux_2 (32 of them)
-  // other useful intermediary signals, e.g: shifted_bits[32] 
   
   always {
         
@@ -30,8 +25,6 @@ module x_bit_left_shifter #(
             out[i] = mux_2_32.out[i] // assign output value
             
         }
-            
-         
-            
+        
   }
     }

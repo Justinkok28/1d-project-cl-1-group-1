@@ -1,6 +1,5 @@
 module alu_auto_tester#(
     CLK_FREQ ~ 1000 : CLK_FREQ > 0)(
-    
     input clk,  // clock
     input rst,  // reset
     input io_button[5],
@@ -10,16 +9,15 @@ module alu_auto_tester#(
     output io_select[4],
     output led[8]  
 ) {
-    const SLOW_CLOCK_DEFAULT_SPEED = $is_sim() ? 9 : 28 // put 8  for sim, 28 for hardware
+    const SLOW_CLOCK_SPEED = $is_sim() ? 9 : 28 // put 9 for sim, 28 for hardware
     const SEVEN_SEG_DIV = $is_sim() ? 3 : 16
-    
-    sig result[32]
-    sig slow_clock
-    autoROM rom
-    alu alu
     const CLKFREQ = $is_sim() ? 1000 : 100000000
+    sig result[32] //result to edit bit to simulate error
+    sig slow_clock //slow clock so that cases can be seen
+    autoROM rom //stores all the cases
+    alu alu
     
-    
+    //FSM states
     enum States {
         IDLE,
         RUN,
@@ -39,11 +37,11 @@ module alu_auto_tester#(
         
         
         .rst(rst) {
+            multi_seven_seg seg(#DIV(SEVEN_SEG_DIV))
+            //dffs
             dff slow_clock_enable
             dff counter[32]
-            dff speed_pointer[$clog2(32)](#INIT(SLOW_CLOCK_DEFAULT_SPEED))
             dff states[$width(States)](#INIT(States.IDLE))
-            multi_seven_seg seg(#DIV(SEVEN_SEG_DIV))
             dff currenta[32]
             dff currentb[32]
             dff currentalufn[6]
@@ -52,119 +50,134 @@ module alu_auto_tester#(
     }
     
     always {
-        //DISPLAY!!!!!
+        //button conditioners
         io_button_cond.in = io_button
         io_button_edge.in = io_button_cond.out
-        seg.values = c{{4b0},{alu.z},{alu.v},{alu.n}}
+        
+        //DISPLAY!!!!!
+        seg.values = c{{4b0},{alu.z},{alu.v},{alu.n}} //z,v,n values on 7seg
         io_segment = ~seg.seg
         io_select = ~seg.sel
         led = alu.out[7:0] //first 8 bits of output
         io_led[2:0] = c{{alu.out[31:24]},{alu.out[23:16]},{alu.out[15:8]}} //next 24 bits of output
         
-        slow_clock = counter.q[speed_pointer.q]
-        counter.d = counter.q + 1 // by default: always increment by 1 
-        speed_pointer.d = speed_pointer.q // by default: leave it unchanged
+        //setting starting values
         currenta.d = currenta.q
         currentb.d = currentb.q
         currentalufn.d = currentalufn.q
+        alu.a = currenta.q
+        alu.b = currentb.q
+        alu.alufn = currentalufn.q
         result = 0
         
+        //slow clock
+        slow_clock = counter.q[SLOW_CLOCK_SPEED]
+        counter.d = counter.q + 1 // by default: always increment by 1
         slow_clock_edge.in = slow_clock
         slow_clock_enable.d = slow_clock_enable.q 
         case (slow_clock_enable.q){
             0:
-                slow_clock_edge.in = 0 // always don't increment or decrement
+                slow_clock_edge.in = 0 // slow_clock off
             1: 
-                slow_clock_edge.in =  slow_clock 
+                slow_clock_edge.in =  slow_clock //slow_clock on
             default:
                 slow_clock_edge.in = 0
-            
-            
         }
+        
+        //case select
         rom.s0 = io_dip[2][0]
         rom.s1 = io_dip[2][1]
         rom.s2 = io_dip[2][2]
         rom.s3 = io_dip[2][3]
         
-        alu.a = currenta.q
-        alu.b = currentb.q
-        alu.alufn = currentalufn.q
+
         //FSM
         case(states.q){
             States.IDLE:
-                // watch out for button presses / slow clock signal, transition to different states accordingly 
+                //display abcd to show that is in autotester mode
                 seg.values = c{{4hA},{4hB},{4hC},{4hD}}
-                // this takes precedence, placed as the first clause
+                
                 if (slow_clock_edge.out)
                 {
                     states.d = States.SHOWA
                 }
+                // watch out for button presses / slow clock signal, transition to different states accordingly 
                 else if(io_button_edge.out[1]){
                     if (~|slow_clock_enable.q){ // if slow_clock is not currently enabled, run
                         states.d = States.RUN
                     }
                 }
-            States.RUN: 
+            
+            States.RUN: //start clock
                 slow_clock_enable.d = 1
                 states.d = States.IDLE
             
             States.SHOWA:
+                //set value a
                 currenta.d = rom.a
+                
+                //display value of a and which state it is at
                 seg.values = c{{4h0},{4h0},{4h0},{4hA}}
                 led = currenta.q[7:0] //first 8 bits of a
                 io_led[2:0] = c{{currenta.q[31:24]},{currenta.q[23:16]},{currenta.q[15:8]}} //next 24 bits of a
-                if (slow_clock_edge.out)
+                if (slow_clock_edge.out) //next
                 {
                     states.d = States.SHOWB
                 }
             States.SHOWB:
+                //set value b
                 currentb.d = rom.b
+                
+                //display value of b and which state it is at
                 seg.values = c{{4h0},{4h0},{4h0},{4hB}}
                 led = currentb.q[7:0] //first 8 bits of b
                 io_led[2:0] = c{{currentb.q[31:24]},{currentb.q[23:16]},{currentb.q[15:8]}} //next 24 bits of b
-                if (slow_clock_edge.out)
+                if (slow_clock_edge.out) //next
                 {
                     states.d = States.SHOWALUFN
                 }
             States.SHOWALUFN:
+                //set value alufn
                 currentalufn.d = rom.alufn
+                
+                //display value of alufn on io_led[4:0] and which state it is at
                 seg.values = c{{4h0},{4h0},{4h0},{4hC}}
-                io_led[1:0] = c{{8b0},{8b0}}
-                led[7:0] = 8b0
-                io_led[2][7] = 1b0
-                io_led[2][6] = 1b0
                 io_led[2][5:0] = currentalufn.q 
                 
-                if (slow_clock_edge.out)
+                //since only using io_led[4:0] override the other leds to 0 to avoid confusion
+                io_led[1:0] = 2x{{8b0}}
+                led[7:0] = 8b0
+                io_led[2][7:6] = 2b0
+                
+                if (slow_clock_edge.out) //next
                 {
                     states.d = States.SHOWRESULT
                 }
             States.SHOWRESULT:
-                result = alu.out
+                result = alu.out //assign outout to result signal
+                
+                //simulate error by flipping the last bit of the result
                 if (io_dip[2][6]){
                     result[0] = ~result[0]
                 }
+                
+                //check if result matches correct answer in ROM
                 if (rom.out != result){
-                    seg.values = c{{4hE},{4hE},{4hE},{4hE}}
+                    seg.values = c{{4hE},{4hE},{4hE},{4hE}} //output EEEE on 7seg to show error
                 }
                 else {
-                    seg.values =c{{4hC},{alu.z},{alu.v},{alu.n}}
+                    seg.values =c{{4hC},{alu.z},{alu.v},{alu.n}} //output C on 7seg to say its correct
                 }
-                if (slow_clock_edge.out)
+                if (slow_clock_edge.out) //next
                 {
                     states.d = States.STOP
                 }      
-            States.STOP:
+            States.STOP: //stop clock
                 slow_clock_enable.d = 0
                 states.d = States.IDLE
             
             
         }
-        
-        
-        
-        
-        
         
     }
 }

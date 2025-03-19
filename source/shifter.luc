@@ -8,8 +8,8 @@ module shifter (
     x_bit_left_shifter shiftmux[5](#SHIFT({5d16, 5d8, 5d4, 5d2, 5d1})) //create 16,8,4,2,1 bit shifters
 
     always {
-        // implement shifter unit logic here
-        // 32 bit left shifter
+        // 32 bit left shifter using cascading shifts by various powers of 2
+        
         // first 16-bit shifter
         shiftmux.a[4] = a
         shiftmux.shift[4] = b[4]
@@ -25,7 +25,6 @@ module shifter (
         }
  
         shift = shiftmux.out[0]
-        
         
     } 
 }

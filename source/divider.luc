@@ -4,8 +4,6 @@ module divider (
     output div[32]
 ) {
 
-  
-      
     always {
         div = a/b
                 

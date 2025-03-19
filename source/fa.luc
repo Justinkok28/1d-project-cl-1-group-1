@@ -7,7 +7,7 @@ module fa (
     output cout  // Carry output to the next more significant bit
 ) {
     always {
-        s = a ^ b ^ cin //XOR a,b,carry_in
-        cout = (a & b) | (cin & a) |(cin & b)
+        s = a ^ b ^ cin //XOR a,b,carry_in for one bit addition
+        cout = (a & b) | (cin & a) |(cin & b) //carry out extra bit
     }
 }

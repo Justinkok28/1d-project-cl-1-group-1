@@ -30,14 +30,16 @@ module alchitry_top (
         rst = reset_cond.out    // conditioned reset
         led = 8h00             // turn LEDs off
         usb_tx = usb_rx          // loop serial port
-        
-        
-        
+       
+        // to test ALU
+        //alu manual tester
         io_segment = alu_manual.io_segment
         io_select = alu_manual.io_select         
         io_led = alu_manual.io_led
         led = alu_manual.led
         
+        
+        //enable alu auto tester
         if (io_dip[2][7]){
             io_segment = alu_auto.io_segment
             io_select = alu_auto.io_select         
@@ -45,7 +47,7 @@ module alchitry_top (
             led = alu_auto.led
         }
         
-        // to test ALU
+        
         
         
     }

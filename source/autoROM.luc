@@ -11,6 +11,8 @@ module autoROM (
     
     
     always {
+        
+        //test cases
         case (c{s3, s2, s1, s0}){
             b0000: out = 32h80000000 //sum
                 a = 32h40000000
@@ -68,7 +70,14 @@ module autoROM (
                 a = 32h00100000
                 b = 32h00000004
                 alufn = 6b000011
-            
+            b1110: out = 32hFFEFFFFF //NOR
+                a = 32h00100000
+                b = 32h00100000
+                alufn = 6b011011
+            b1111: out = 32hFFEFEFFF //NAND
+                a = 32h00111000
+                b = 32h00101000
+                alufn = 6b011100
             
             default:
                 out = 0
